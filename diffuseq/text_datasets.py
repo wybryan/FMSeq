@@ -1,5 +1,6 @@
 # import blobfile as bf
 import numpy as np
+from functools import partial
 from torch.utils.data import DataLoader, Dataset
 from torch.utils.data.distributed import DistributedSampler
 
@@ -45,6 +46,8 @@ def load_data_text(
         model_emb=model_emb
     )
 
+    collate_fn = partial(dynamic_collate_fn, pad_token_id=loaded_vocab.pad_token_id)
+
     if split != 'test':
         sampler = DistributedSampler(dataset)
         data_loader = DataLoader(
@@ -54,6 +57,7 @@ def load_data_text(
             sampler=sampler,
             # shuffle=not deterministic,
             num_workers=4,
+            collate_fn=collate_fn,
         )
     else:
         data_loader = DataLoader(
@@ -63,6 +67,7 @@ def load_data_text(
             # sampler=sampler,
             shuffle=not deterministic,
             num_workers=4,
+            collate_fn=collate_fn,
         )
 
     if loop:
@@ -138,29 +143,11 @@ def helper_tokenize(sentence_lst, vocab_dict, seq_len):
 
     print('### tokenized_datasets', tokenized_datasets)
     print('### tokenized_datasets...example', tokenized_datasets['input_ids'][0], tokenized_datasets['input_mask'][0])
-    
-    def pad_function(group_lst):
-        max_length = seq_len
-        group_lst['input_ids'] = _collate_batch_helper(group_lst['input_ids'], vocab_dict.pad_token_id, max_length)
-        group_lst['input_mask'] = _collate_batch_helper(group_lst['input_mask'], 1, max_length)
-        return group_lst
 
-    print(f"RAM used: {psutil.Process().memory_info().rss / (1024 * 1024):.2f} MB")
-
-    lm_datasets = tokenized_datasets.map(
-        pad_function,
-        batched=True,
-        num_proc=None,
-        desc=f"padding",
-    )
-
-    print(lm_datasets, 'padded dataset')
-    print('### padded dataset...example', lm_datasets['input_ids'][0], lm_datasets['input_mask'][0])
-
-    print(f"RAM used: {psutil.Process().memory_info().rss / (1024 * 1024):.2f} MB")
+    # Padding is now handled dynamically per-batch in dynamic_collate_fn
 
     raw_datasets = datasets.DatasetDict()
-    raw_datasets['train'] = lm_datasets
+    raw_datasets['train'] = tokenized_datasets
     print(f"RAM used: {psutil.Process().memory_info().rss / (1024 * 1024):.2f} MB")
     return raw_datasets
 
@@ -310,6 +297,37 @@ class TextDataset(Dataset):
             out_kwargs['input_mask'] = np.array(self.text_datasets['train'][idx]['input_mask'])
 
             return arr, out_kwargs
+
+def dynamic_collate_fn(batch, pad_token_id):
+    """Pad batch to the max sequence length within the batch."""
+    max_len = max(item[1]['input_ids'].shape[0] for item in batch)
+
+    arrs = []
+    input_ids_list = []
+    input_mask_list = []
+
+    for arr, kwargs in batch:
+        input_ids = kwargs['input_ids']
+        input_mask = kwargs['input_mask']
+
+        ids_pad = max_len - len(input_ids)
+        mask_pad = max_len - len(input_mask)
+
+        if ids_pad > 0:
+            arr = np.pad(arr, ((0, ids_pad), (0, 0)), mode='constant')
+            input_ids = np.pad(input_ids, (0, ids_pad), mode='constant', constant_values=pad_token_id)
+        if mask_pad > 0:
+            input_mask = np.pad(input_mask, (0, mask_pad), mode='constant', constant_values=1)
+
+        arrs.append(arr)
+        input_ids_list.append(input_ids)
+        input_mask_list.append(input_mask)
+
+    return (
+        torch.from_numpy(np.stack(arrs)),
+        {'input_ids': torch.from_numpy(np.stack(input_ids_list)), 'input_mask': torch.from_numpy(np.stack(input_mask_list))}
+    )
+
 
 def _collate_batch_helper(examples, pad_token_id, max_length, return_mask=False):
     result = torch.full([len(examples), max_length], pad_token_id, dtype=torch.int64).tolist()
