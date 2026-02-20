@@ -27,9 +27,9 @@ if __name__ == '__main__':
     parser.add_argument('--microbatch', type=int, default=64, help='microbatch size')
     parser.add_argument('--seed', type=int, default=101, help='random seed')
 
-    parser.add_argument('--config_name', type=str, default='bert-base-uncased', help='config of pre-trained models')
-    parser.add_argument('--vocab', type=str, default='bert', help='use bert vocab or load external vocab dict if given as path')
-    parser.add_argument('--use_plm_init', type=str, default='no', choices=['no', 'bert'], help='load init parameter from the pre-trained lm')
+    parser.add_argument('--config_name', type=str, default='bert-base-uncased', help='config of pre-trained models; for Qwen3 pass the HF model id, e.g. Qwen/Qwen3-32B')
+    parser.add_argument('--vocab', type=str, default='bert', help='tokenizer type: "bert", "qwen", or path to an external BPE vocab dict')
+    parser.add_argument('--use_plm_init', type=str, default='no', choices=['no', 'bert', 'qwen'], help='load init parameter from the pre-trained lm (bert or qwen)')
     parser.add_argument('--sc_rate', type=float, default=0.0, help='the rate of self conditioning')
     parser.add_argument('--rescale_max', type=float, default=1.0, help='rescale range [0, rescale_max]')
     parser.add_argument('--loss_mask', type=str, default="remain y0, 1st pad, 2nd pad", help='the type of loss mask, ["remain all", "remain x0, y0", "remain y0, pad", "remain y0, 1st pad, 2nd pad", "remain y0"]')

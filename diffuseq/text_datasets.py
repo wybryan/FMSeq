@@ -92,7 +92,7 @@ def helper_tokenize(sentence_lst, vocab_dict, seq_len):
     tokenized_datasets = raw_datasets.map(
         tokenize_function,
         batched=True,
-        num_proc=4,
+        num_proc=None,
         remove_columns=['src', 'trg'],
         load_from_cache_file=True,
         desc="Running tokenizer on dataset",
@@ -132,7 +132,7 @@ def helper_tokenize(sentence_lst, vocab_dict, seq_len):
     tokenized_datasets = tokenized_datasets.map(
         merge_and_mask,
         batched=True,
-        num_proc=1,
+        num_proc=None,
         desc=f"merge and mask",
     )
 
@@ -150,7 +150,7 @@ def helper_tokenize(sentence_lst, vocab_dict, seq_len):
     lm_datasets = tokenized_datasets.map(
         pad_function,
         batched=True,
-        num_proc=1,
+        num_proc=None,
         desc=f"padding",
     )
 
@@ -182,7 +182,7 @@ def helper_tokenize_fmseq(sentence_lst, vocab_dict, seq_len):
     tokenized_datasets = raw_datasets.map(
         tokenize_function,
         batched=True,
-        num_proc=4,
+        num_proc=None,
         remove_columns=['src', 'trg'],
         load_from_cache_file=True,
         desc="Running tokenizer on dataset",
@@ -217,7 +217,7 @@ def helper_tokenize_fmseq(sentence_lst, vocab_dict, seq_len):
     tokenized_datasets = tokenized_datasets.map(
         merge_and_mask,
         batched=True,
-        num_proc=1,
+        num_proc=None,
         desc=f"merge and mask",
     )
 
@@ -235,7 +235,7 @@ def helper_tokenize_fmseq(sentence_lst, vocab_dict, seq_len):
     lm_datasets = tokenized_datasets.map(
         pad_function,
         batched=True,
-        num_proc=1,
+        num_proc=None,
         desc=f"padding",
     )
 

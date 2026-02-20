@@ -3,6 +3,7 @@ from transformers import AutoConfig
 from transformers.models.bert.modeling_bert import BertEncoder, BertModel
 import torch
 
+import gc
 import numpy as np
 import torch as th
 import torch.nn as nn
@@ -51,6 +52,19 @@ class TransformerNetModel(nn.Module):
                 config.num_attention_heads=8
                 config.hidden_size=512
                 config.intermediate_size=1024
+            elif init_pretrained == 'qwen':
+                # Derive BertConfig from Qwen3's architecture parameters so that
+                # the diffusion backbone mirrors Qwen3's capacity while remaining
+                # compatible with BertEncoder.
+                from transformers import BertConfig
+                _qwen_cfg = AutoConfig.from_pretrained(config_name, trust_remote_code=True)
+                config = BertConfig(
+                    hidden_size=_qwen_cfg.hidden_size,
+                    intermediate_size=_qwen_cfg.intermediate_size,
+                    num_hidden_layers=_qwen_cfg.num_hidden_layers,
+                    num_attention_heads=_qwen_cfg.num_attention_heads,
+                    max_position_embeddings=_qwen_cfg.max_position_embeddings,
+                )
             config.hidden_dropout_prob = dropout
                 
         
@@ -107,7 +121,47 @@ class TransformerNetModel(nn.Module):
             self.register_buffer("position_ids", torch.arange(config.max_position_embeddings).expand((1, -1)))
             self.position_embeddings = nn.Embedding(config.max_position_embeddings, config.hidden_size)
             self.LayerNorm = nn.LayerNorm(config.hidden_size, eps=config.layer_norm_eps)
-        
+
+        elif init_pretrained == 'qwen':
+            from transformers import AutoModelForCausalLM
+            print('initializing word embedding from pretrained Qwen3...')
+            print(config)
+
+            # Load the Qwen3 model in fp16 on CPU to save peak memory.
+            # Only the embedding table is kept; the rest is deleted afterwards.
+            qwen_model = AutoModelForCausalLM.from_pretrained(
+                config_name,
+                torch_dtype=torch.float16,
+                trust_remote_code=True,
+                device_map='cpu',
+            )
+
+            qwen_emb_weight = qwen_model.model.embed_tokens.weight.detach().float()
+            qwen_emb_dim = qwen_emb_weight.shape[1]  # e.g. 5120 for Qwen3-32B
+
+            with th.no_grad():
+                if qwen_emb_dim == input_dims:
+                    # Dimensions already match; copy directly.
+                    self.word_embedding.weight.copy_(qwen_emb_weight)
+                else:
+                    # Project qwen_emb_dim → input_dims with a scaled normal projection.
+                    proj = nn.Linear(qwen_emb_dim, input_dims, bias=False)
+                    nn.init.normal_(proj.weight, std=1.0 / (qwen_emb_dim ** 0.5))
+                    self.word_embedding.weight.copy_(proj(qwen_emb_weight))
+
+            with th.no_grad():
+                self.lm_head.weight = self.word_embedding.weight
+
+            # Free Qwen3 weights; only the projected embedding is retained.
+            del qwen_model, qwen_emb_weight
+            gc.collect()
+
+            # Diffusion backbone: BertEncoder shaped by the Qwen3-derived BertConfig.
+            self.input_transformers = BertEncoder(config)
+            self.register_buffer("position_ids", torch.arange(config.max_position_embeddings).expand((1, -1)))
+            self.position_embeddings = nn.Embedding(config.max_position_embeddings, config.hidden_size)
+            self.LayerNorm = nn.LayerNorm(config.hidden_size, eps=config.layer_norm_eps)
+
         else:
             assert False, "invalid type of init_pretrained"
         

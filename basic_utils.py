@@ -29,7 +29,21 @@ class myTokenizer():
             # save
             if not is_eval:
                 tokenizer.save_pretrained(args.checkpoint_path)
-        else: 
+        elif args.vocab == 'qwen':
+            tokenizer = AutoTokenizer.from_pretrained(args.config_name, trust_remote_code=True)
+            self.tokenizer = tokenizer
+            # Qwen3 uses eos_token as the sequence separator
+            self.sep_token_id = tokenizer.eos_token_id
+            # Qwen3 may not define a pad token; fall back to eos
+            self.pad_token_id = (
+                tokenizer.pad_token_id
+                if tokenizer.pad_token_id is not None
+                else tokenizer.eos_token_id
+            )
+            # save
+            if not is_eval:
+                tokenizer.save_pretrained(args.checkpoint_path)
+        else:
             # load vocab from the path
             print('#'*30, 'load vocab from', args.vocab)
             vocab_dict = {'[START]': 0, '[END]': 1, '[UNK]':2, '[PAD]':3}
