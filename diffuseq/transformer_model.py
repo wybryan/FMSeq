@@ -133,15 +133,27 @@ class TransformerNetModel(nn.Module):
                 config_name,
                 torch_dtype=torch.float16,
                 trust_remote_code=True,
-                device_map='cpu',
+                # device_map='cpu',
             )
 
             qwen_emb_weight = qwen_model.model.embed_tokens.weight.detach().float()
             qwen_emb_dim = qwen_emb_weight.shape[1]  # e.g. 5120 for Qwen3-32B
 
+            # at basic_utils.py:63, vocab_size is set via len(self.tokenizer), 
+            # which for the Qwen tokenizer returns 151669 (the actual number of tokens in the vocabulary). 
+            # However, the Qwen3 model's embedding table at qwen_model.model.embed_tokens.weight has 151936 rows. 
+            # This is because Qwen3 pads its embedding matrix to a multiple of 256 for GPU efficiency (151936 = 593 × 256), 
+            # even though only 151669 tokens are actually used.
+
+            # So the mismatch is: 
+            # vocab_size = len(tokenizer) = 151669 (real tokens)
+            # qwen_model.model.embed_tokens.weight.shape[0] = 151936 (padded for alignment)
+            qwen_emb_weight = qwen_emb_weight[:vocab_size]
+
             with th.no_grad():
                 if qwen_emb_dim == input_dims:
                     # Dimensions already match; copy directly.
+                    print("Qwen embedding dimension matches input_dims; copying directly.")
                     self.word_embedding.weight.copy_(qwen_emb_weight)
                 else:
                     # Project qwen_emb_dim → input_dims with a scaled normal projection.

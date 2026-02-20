@@ -3,6 +3,7 @@ import os
 import argparse
 from transformers import AutoTokenizer
 
+MAX_TOKEN_LEN = 5600  # Set a maximum token length to filter out excessively long samples
 
 def load_json_data(file_path):
     with open(file_path, "r", encoding="utf-8") as f:
@@ -45,7 +46,9 @@ def process_item(item, tokenizer):
     src_text = system_value + "\n\n" + human_value + "\n\n原始输出：\n" + model_output + "\n\n修正输出：\n" 
     trg_text = gpt_value
 
-    return {"src": src_text.strip(), "trg": trg_text.strip()}
+    token_len = len(tokenizer.encode(src_text + trg_text, add_special_tokens=False))
+
+    return {"src": src_text.strip(), "trg": trg_text.strip(), "token_len": token_len}
 
 
 def convert_dataset(input_file, output_file, tokenizer):
@@ -56,7 +59,8 @@ def convert_dataset(input_file, output_file, tokenizer):
     results = []
     for i, item in enumerate(data):
         processed = process_item(item, tokenizer)
-        results.append(processed)
+        if processed["token_len"] <= MAX_TOKEN_LEN:
+            results.append(processed)
         if (i + 1) % 100 == 0 or (i + 1) == len(data):
             print(f"Processed {i + 1}/{len(data)} samples")
 
@@ -75,7 +79,7 @@ def main():
     parser.add_argument(
         "--model_path",
         type=str,
-        default="models/Qwen3-4B",
+        default="models/Qwen3-0.6B",
         help="Path to Qwen model or HuggingFace model name (default: Qwen/Qwen2.5-32B)",
     )
     parser.add_argument(
