@@ -208,6 +208,7 @@ def load_tokenizer(args, is_eval=False):
         tokenizer = mtTokenizer(args)
     else:
         tokenizer = myTokenizer(args, is_eval=is_eval)
+    args.pad_token_id = tokenizer.pad_token_id
     return tokenizer
 
 def load_defaults_config():
@@ -264,7 +265,8 @@ def create_model_and_diffusion(
         use_kl = use_kl,
         rescale_learned_sigmas=rescale_learned_sigmas,
         rescale_max=kwargs["rescale_max"],
-        loss_mask=kwargs["loss_mask"]
+        loss_mask=kwargs["loss_mask"],
+        pad_token_id=kwargs["pad_token_id"]
     )
 
     return model, diffusion

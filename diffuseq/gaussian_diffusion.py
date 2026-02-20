@@ -150,6 +150,7 @@ class GaussianDiffusion:
         self.sigma_small = sigma_small
         self.use_kl = use_kl
         self.loss_mask = kwargs["loss_mask"]
+        self.pad_token_id = kwargs["pad_token_id"]
 
         # Use float64 for accuracy.
         betas = np.array(betas, dtype=np.float64)
@@ -591,9 +592,9 @@ class GaussianDiffusion:
         elif mask_type == "remain y0, pad":
             mse_mask = input_ids_mask
         else:
-            mse_mask = th.where((input_ids_x*input_ids_mask)==0, 0, 1)
+            mse_mask = th.where((input_ids_x == self.pad_token_id) | (input_ids_mask == 0), 0, 1)
             if mask_type == "remain y0, 1st pad, 2nd pad":
-                first_pad_idx = (input_ids_x==0).float().argmax(axis=-1)
+                first_pad_idx = (input_ids_x == self.pad_token_id).float().argmax(axis=-1)
                 first_pad_idx = th.where(first_pad_idx==0, input_ids_x.size(1)-1, first_pad_idx)
                 second_pad_idx = th.min(first_pad_idx+1, th.ones_like(first_pad_idx)*(input_ids_x.size(1)-1))
                 try:
@@ -712,7 +713,8 @@ class GaussianDiffusion:
         # decoder_nll = self._token_discrete_loss(x_start, get_logits, input_ids_x) # embedding regularization
         decoder_nll = self._token_discrete_loss(x_start, get_logits, input_ids_x) # embedding regularization
 
-        terms["nll"] = self._token_discrete_loss(model_out_x_start, get_logits, input_ids_x, mask=input_ids_mask, truncate=True, t=t) # x_0->model_out_x_start
+        nll_mask = th.where(input_ids_x == self.pad_token_id, 0, input_ids_mask)
+        terms["nll"] = self._token_discrete_loss(model_out_x_start, get_logits, input_ids_x, mask=nll_mask, truncate=True, t=t) # x_0->model_out_x_start
         # assert (model.lm_head.weight == model.word_embedding.weight).all()
 
         terms["loss"] = terms["mse"] + decoder_nll
