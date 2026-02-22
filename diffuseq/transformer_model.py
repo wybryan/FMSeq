@@ -45,14 +45,14 @@ class TransformerNetModel(nn.Module):
         super().__init__()
 
         if config is None:
-            if config_name == "bert-base-uncased":
+            if "bert-base-uncased" in config_name:
                 config = AutoConfig.from_pretrained(config_name)
             elif config_name == "bert-de2en":
                 config = AutoConfig.from_pretrained("bert-base-uncased")
                 config.num_attention_heads=8
                 config.hidden_size=512
                 config.intermediate_size=1024
-            elif init_pretrained == 'qwen':
+            elif 'qwen' in config_name:
                 # Derive BertConfig from Qwen3's architecture parameters so that
                 # the diffusion backbone mirrors Qwen3's capacity while remaining
                 # compatible with BertEncoder.
