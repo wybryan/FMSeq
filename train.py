@@ -19,6 +19,8 @@ from basic_utils import (
 from train_util import TrainLoop
 from transformers import set_seed
 import wandb
+import atexit
+atexit.register(dist_util.cleanup_dist)
 
 ### custom your wandb setting here ###
 # os.environ["WANDB_API_KEY"] = ""
