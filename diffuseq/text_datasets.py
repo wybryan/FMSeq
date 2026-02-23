@@ -46,7 +46,8 @@ def load_data_text(
         model_emb=model_emb
     )
 
-    collate_fn = partial(dynamic_collate_fn, pad_token_id=loaded_vocab.pad_token_id)
+    dynamic_batching = getattr(data_args, 'dynamic_batching', False)
+    collate_fn = partial(dynamic_collate_fn, pad_token_id=loaded_vocab.pad_token_id) if dynamic_batching else None
 
     if split != 'test':
         sampler = DistributedSampler(dataset)
@@ -80,7 +81,7 @@ def infinite_loader(data_loader):
     while True:
         yield from data_loader
 
-def helper_tokenize(sentence_lst, vocab_dict, seq_len):
+def helper_tokenize(sentence_lst, vocab_dict, seq_len, dynamic_batching=False):
     # Process.memory_info is expressed in bytes, so convert to megabytes
     print(f"RAM used: {psutil.Process().memory_info().rss / (1024 * 1024):.2f} MB")
     raw_datasets = Dataset2.from_dict(sentence_lst)
@@ -144,7 +145,26 @@ def helper_tokenize(sentence_lst, vocab_dict, seq_len):
     print('### tokenized_datasets', tokenized_datasets)
     print('### tokenized_datasets...example', tokenized_datasets['input_ids'][0], tokenized_datasets['input_mask'][0])
 
-    # Padding is now handled dynamically per-batch in dynamic_collate_fn
+    if not dynamic_batching:
+        def pad_function(group_lst):
+            max_length = seq_len
+            group_lst['input_ids'] = _collate_batch_helper(group_lst['input_ids'], vocab_dict.pad_token_id, max_length)
+            group_lst['input_mask'] = _collate_batch_helper(group_lst['input_mask'], 1, max_length)
+            return group_lst
+
+        print(f"RAM used: {psutil.Process().memory_info().rss / (1024 * 1024):.2f} MB")
+
+        lm_datasets = tokenized_datasets.map(
+            pad_function,
+            batched=True,
+            num_proc=None,
+            desc=f"padding",
+        )
+
+        print(lm_datasets, 'padded dataset')
+        print('### padded dataset...example', lm_datasets['input_ids'][0], lm_datasets['input_mask'][0])
+        print(f"RAM used: {psutil.Process().memory_info().rss / (1024 * 1024):.2f} MB")
+        tokenized_datasets = lm_datasets
 
     raw_datasets = datasets.DatasetDict()
     raw_datasets['train'] = tokenized_datasets
@@ -265,10 +285,11 @@ def get_corpus(data_args, seq_len, split='train', loaded_vocab=None):
         
     # get tokenizer.
     vocab_dict = loaded_vocab
+    dynamic_batching = getattr(data_args, 'dynamic_batching', False)
     if data_args.merge_strategy == "equal":
         train_dataset = helper_tokenize_fmseq(sentence_lst, vocab_dict, seq_len)
     else:
-        train_dataset = helper_tokenize(sentence_lst, vocab_dict, seq_len)
+        train_dataset = helper_tokenize(sentence_lst, vocab_dict, seq_len, dynamic_batching=dynamic_batching)
     return train_dataset
 
 

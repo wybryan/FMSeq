@@ -40,5 +40,6 @@
   "rescale_max": 1.0,
   "loss_mask": "remain y0, 1st pad, 2nd pad",
   "merge_strategy": "nonequal",
-  "pad_token_id": 0
+  "pad_token_id": 0,
+  "dynamic_batching": false
 }

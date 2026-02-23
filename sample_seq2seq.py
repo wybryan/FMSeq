@@ -291,7 +291,8 @@ def main():
             # )
 
             # print(samples[0].shape) # samples for each step
-                
+            dynamic_batching = getattr(args, 'dynamic_batching', False)
+            print(f"Dynamic Batching = {dynamic_batching}")
             def logAllSamples(**kargs):
                 for key, arg in kargs.items():
                     for item in arg:
@@ -299,7 +300,10 @@ def main():
                         cands = th.topk(logits, k=1, dim=-1)
                         word_lst_recover = []
                         for seq, input_mask in zip(cands.indices, input_ids_mask_ori):
-                            len_x = args.seq_len - sum(input_mask).tolist()
+                            if not dynamic_batching:
+                                len_x = args.seq_len - sum(input_mask).tolist()
+                            else:
+                                len_x = sum(input_mask == 0).tolist()  # dynamic batching: find the first zero in input_mask
                             length, tokens = tokenizer.decode_token_stop_at_sep(seq[len_x:], True)
                             word_lst_recover.append(f"{length}:{tokens}")
                         with open(out_file.replace(".json", f"-log-{key}.jsonl"), "a") as f:
@@ -329,14 +333,20 @@ def main():
             # tokenizer = load_tokenizer(args)
             gen_token_num = 0
             for seq, input_mask in zip(cands.indices, input_ids_mask_ori):
-                len_x = args.seq_len - sum(input_mask).tolist()
+                if not dynamic_batching:
+                    len_x = args.seq_len - sum(input_mask).tolist()
+                else:
+                    len_x = sum(input_mask == 0).tolist()
                 tokens = tokenizer.decode_token_stop_at_sep(seq[len_x:])
                 gen_token_num += len(tokens)
                 word_lst_recover.append(tokens)
 
             for seq, input_mask in zip(input_ids_x, input_ids_mask_ori):
                 # tokens = tokenizer.decode_token(seq)
-                len_x = args.seq_len - sum(input_mask).tolist()
+                if not dynamic_batching:
+                    len_x = args.seq_len - sum(input_mask).tolist()
+                else:
+                    len_x = sum(input_mask == 0).tolist()  # dynamic batching: find the first zero in input_mask
                 word_lst_source.append(tokenizer.decode_token(seq[:len_x]))
                 word_lst_ref.append(tokenizer.decode_token(seq[len_x:]))
 
