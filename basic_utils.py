@@ -36,11 +36,7 @@ class myTokenizer():
             self.sep_token_id = tokenizer.eos_token_id
             # Qwen3 has pad tokenn, but if not, we can use eos_token as pad token
             assert tokenizer.pad_token_id is not None
-            self.pad_token_id = (
-                tokenizer.pad_token_id
-                if tokenizer.pad_token_id is not None
-                else tokenizer.eos_token_id
-            )
+            self.pad_token_id = tokenizer.pad_token_id
             # save
             if not is_eval:
                 tokenizer.save_pretrained(args.checkpoint_path)
