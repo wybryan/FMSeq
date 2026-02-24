@@ -46,7 +46,7 @@ class TransformerNetModel(nn.Module):
 
         if config is None:
             if "bert-base-uncased" in config_name:
-                config = AutoConfig.from_pretrained(config_name)
+                config = AutoConfig.from_pretrained(config_name, attn_implementation="sdpa")
             elif config_name == "bert-de2en":
                 config = AutoConfig.from_pretrained("bert-base-uncased")
                 config.num_attention_heads=8
