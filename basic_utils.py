@@ -244,7 +244,8 @@ def create_model_and_diffusion(
         config_name=config_name,
         vocab_size=vocab_size,
         init_pretrained=use_plm_init,
-        sc_rate=sc_rate
+        sc_rate=sc_rate,
+        max_position_embeddings=kwargs.get("max_position_embeddings", 512)
     )
 
     betas = gd.get_named_beta_schedule(noise_schedule, diffusion_steps)

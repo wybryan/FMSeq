@@ -33,6 +33,7 @@ class TransformerNetModel(nn.Module):
         input_dims,
         output_dims,
         hidden_t_dim,
+        max_position_embeddings,
         dropout=0,
         config=None,
         config_name='bert-base-uncased',
@@ -58,14 +59,22 @@ class TransformerNetModel(nn.Module):
                 # compatible with BertEncoder.
                 from transformers import BertConfig
                 _qwen_cfg = AutoConfig.from_pretrained(config_name, trust_remote_code=True)
+                # config = BertConfig(
+                #     hidden_size=_qwen_cfg.hidden_size,
+                #     intermediate_size=_qwen_cfg.intermediate_size,
+                #     num_hidden_layers=_qwen_cfg.num_hidden_layers,
+                #     num_attention_heads=_qwen_cfg.num_attention_heads,
+                #     max_position_embeddings=_qwen_cfg.max_position_embeddings,
+                # )
                 config = BertConfig(
-                    hidden_size=_qwen_cfg.hidden_size,
-                    intermediate_size=_qwen_cfg.intermediate_size,
-                    num_hidden_layers=_qwen_cfg.num_hidden_layers,
-                    num_attention_heads=_qwen_cfg.num_attention_heads,
-                    max_position_embeddings=_qwen_cfg.max_position_embeddings,
+                    hidden_size=768,
+                    intermediate_size=3072,
+                    num_hidden_layers=12,
+                    num_attention_heads=12,
+                    max_position_embeddings=max_position_embeddings,
                 )
             config.hidden_dropout_prob = dropout
+            config.max_position_embeddings = max_position_embeddings
                 
         
 
