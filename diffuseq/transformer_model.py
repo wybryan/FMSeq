@@ -100,11 +100,12 @@ class TransformerNetModel(nn.Module):
             print(config)
             temp_bert = BertModel.from_pretrained(config_name, config=config)
 
-            self.word_embedding = temp_bert.embeddings.word_embeddings
-            with th.no_grad():
-                self.lm_head.weight = self.word_embedding.weight
-            # self.lm_head.weight.requires_grad = False
-            # self.word_embedding.weight.requires_grad = False
+            if self.input_dims == config.hidden_size:
+                self.word_embedding = temp_bert.embeddings.word_embeddings
+                with th.no_grad():
+                    self.lm_head.weight = self.word_embedding.weight
+                # self.lm_head.weight.requires_grad = False
+                # self.word_embedding.weight.requires_grad = False
             
             self.input_transformers = temp_bert.encoder
             self.register_buffer("position_ids", torch.arange(config.max_position_embeddings).expand((1, -1)))
