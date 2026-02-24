@@ -2,7 +2,7 @@ from transformers import AutoConfig
 # from transformers import BertEncoder
 from transformers.models.bert.modeling_bert import BertEncoder, BertModel
 import torch
-
+from transformers import BertConfig
 import gc
 import numpy as np
 import torch as th
@@ -53,26 +53,38 @@ class TransformerNetModel(nn.Module):
                 config.num_attention_heads=8
                 config.hidden_size=512
                 config.intermediate_size=1024
-            elif 'qwen' in config_name:
+            elif 'qwen' in config_name.lower():
+                print(f"Deriving BertConfig from {config_name} for diffusion backbone...")
+                print(f"vocab_size: {vocab_size}, max_position_embeddings: {max_position_embeddings}")
                 # Derive BertConfig from Qwen3's architecture parameters so that
                 # the diffusion backbone mirrors Qwen3's capacity while remaining
                 # compatible with BertEncoder.
-                from transformers import BertConfig
-                _qwen_cfg = AutoConfig.from_pretrained(config_name, trust_remote_code=True)
-                # config = BertConfig(
-                #     hidden_size=_qwen_cfg.hidden_size,
-                #     intermediate_size=_qwen_cfg.intermediate_size,
-                #     num_hidden_layers=_qwen_cfg.num_hidden_layers,
-                #     num_attention_heads=_qwen_cfg.num_attention_heads,
-                #     max_position_embeddings=_qwen_cfg.max_position_embeddings,
-                # )
-                config = BertConfig(
-                    hidden_size=768,
-                    intermediate_size=3072,
-                    num_hidden_layers=12,
-                    num_attention_heads=12,
-                    max_position_embeddings=max_position_embeddings,
-                )
+                bert_cfg_base ={
+                    "architectures": [
+                        "BertForMaskedLM"
+                    ],
+                    "attention_probs_dropout_prob": 0.1,
+                    "gradient_checkpointing": False,
+                    "hidden_act": "gelu",
+                    "hidden_dropout_prob": 0.1,
+                    "hidden_size": 768,
+                    "initializer_range": 0.02,
+                    "intermediate_size": 3072,
+                    "layer_norm_eps": 1e-12,
+                    "max_position_embeddings": max_position_embeddings,
+                    "model_type": "bert",
+                    "num_attention_heads": 12,
+                    "num_hidden_layers": 12,
+                    "pad_token_id": 0,
+                    "position_embedding_type": "absolute",
+                    "transformers_version": "4.6.0.dev0",
+                    "type_vocab_size": 2,
+                    "use_cache": True,
+                    "vocab_size": vocab_size,
+                    "attn_implementation": "sdpa",
+                }
+                config = BertConfig(**bert_cfg_base)
+
             config.hidden_dropout_prob = dropout
             config.max_position_embeddings = max_position_embeddings
                 
