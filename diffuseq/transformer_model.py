@@ -156,18 +156,12 @@ class TransformerNetModel(nn.Module):
                     # Dimensions already match; copy directly.
                     print("Qwen embedding dimension matches input_dims; copying directly.")
                     self.word_embedding.weight.copy_(qwen_emb_weight)
-                else:
-                    # Project qwen_emb_dim → input_dims with a scaled normal projection.
-                    proj = nn.Linear(qwen_emb_dim, input_dims, bias=False)
-                    nn.init.normal_(proj.weight, std=1.0 / (qwen_emb_dim ** 0.5))
-                    self.word_embedding.weight.copy_(proj(qwen_emb_weight))
-
-            with th.no_grad():
-                self.lm_head.weight = self.word_embedding.weight
+                    self.lm_head.weight = self.word_embedding.weight
 
             # Free Qwen3 weights; only the projected embedding is retained.
             del qwen_model, qwen_emb_weight
             gc.collect()
+            th.cuda.empty_cache()
 
             # Diffusion backbone: BertEncoder shaped by the Qwen3-derived BertConfig.
             self.input_transformers = BertEncoder(config)
