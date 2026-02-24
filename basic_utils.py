@@ -267,7 +267,8 @@ def create_model_and_diffusion(
         rescale_learned_sigmas=rescale_learned_sigmas,
         rescale_max=kwargs["rescale_max"],
         loss_mask=kwargs["loss_mask"],
-        pad_token_id=kwargs["pad_token_id"]
+        pad_token_id=kwargs["pad_token_id"],
+        dynamic_batching=kwargs.get("dynamic_batching", False)
     )
 
     return model, diffusion
