@@ -34,7 +34,7 @@ if __name__ == '__main__':
         if not os.path.isdir(out_dir):
             os.mkdir(out_dir)
 
-        COMMAND = f'python -m torch.distributed.launch --nproc_per_node=1 --master_port={12203 +random.randint(0,1000)+ int(args.seed)} --use_env sample_seq2seq_debug.py ' \
+        COMMAND = f'python -m torch.distributed.launch --nproc_per_node=1 --master_port={12203 +random.randint(0,1000)+ int(args.seed)} --use_env sample_seq2seq.py ' \
         f'--model_path {args.checkpoint} --step {args.step} ' \
         f'--batch_size {args.bsz} --seed2 {args.seed} --split {args.split} ' \
         f'--out_dir {out_dir} --top_p {args.top_p} --td {args.td} --cand_num {args.cand_num}'
