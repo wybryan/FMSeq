@@ -333,7 +333,7 @@ class TrainLoop:
         self.opt.step()
         # print("after step, emb:", self.cal_anisotropy(self.model.word_embedding.weight))
         # print("after step, lm:", self.cal_anisotropy(self.model.lm_head.weight))
-        self._log_emb_anisotropy()                                       
+        # self._log_emb_anisotropy()                                       
         for rate, params in zip(self.ema_rate, self.ema_params):
             update_ema(params, self.master_params, rate=rate)
     

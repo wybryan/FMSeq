@@ -16,4 +16,5 @@ python -m torch.distributed.launch --nproc_per_node=1 --master_port=12331 --use_
 --resume_checkpoint "None" \
 --notes test-qqp \
 --sc_rate 0.5 \
---rescale_max 1000
+--rescale_max 1000 \
+--config_name /vepfs/jinke/bw-data/FMSeq/models/bert-base-uncased
