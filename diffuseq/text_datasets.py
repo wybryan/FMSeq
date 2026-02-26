@@ -75,6 +75,14 @@ def infinite_loader(data_loader):
     while True:
         yield from data_loader
 
+def decode_list(input_ids, vocab_dict):
+    tmp = np.array(input_ids)
+    if len(tmp.shape) == 1:
+        tmp = tmp[:, np.newaxis]
+        return vocab_dict.decode_token(tmp)
+    else:
+        return [vocab_dict.decode_token(x[:, np.newaxis]) for x in tmp]
+
 def helper_tokenize(sentence_lst, vocab_dict, seq_len):
     # Process.memory_info is expressed in bytes, so convert to megabytes
     print(f"RAM used: {psutil.Process().memory_info().rss / (1024 * 1024):.2f} MB")
@@ -106,10 +114,12 @@ def helper_tokenize(sentence_lst, vocab_dict, seq_len):
         mask = []
         src_len = trg_len = 0
         for i in range(len(group_lst['input_id_x'])):
-            end_token = group_lst['input_id_x'][i][-1]
+            end_token_x = group_lst['input_id_x'][i][-1]
+            end_token_y = group_lst['input_id_y'][i][-1]
             src = group_lst['input_id_x'][i][:-1]
             trg = group_lst['input_id_y'][i][:-1]
             while len(src) + len(trg) > seq_len - 3:
+                print("TRUNCATION WARNING: src + trg length exceeds seq_len - 3, truncating...")
                 if len(src)>len(trg):
                     src.pop()
                 elif len(src)<len(trg):
@@ -117,8 +127,8 @@ def helper_tokenize(sentence_lst, vocab_dict, seq_len):
                 else:
                     src.pop()
                     trg.pop()
-            src.append(end_token)
-            trg.append(end_token)
+            src.append(end_token_x)
+            trg.append(end_token_y)
             src_len += len(src)
             trg_len += len(trg)
 
